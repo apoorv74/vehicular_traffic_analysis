@@ -1,6 +1,14 @@
 ---
 title: "Traffic patterns from UBER Movement Dataset"
-output: html_notebook
+output:
+    html_document:
+      fig_caption: yes
+      highlight: pygments
+      toc: TRUE
+      toc_depth: 2
+      number_sections: TRUE
+      toc_float:
+        smooth_scroll: FALSE
 ---
 
 Datasets:
@@ -12,9 +20,9 @@ Datasets:
 | City        | Delhi                                                       |
 
 ```{r}
-library(tidyverse)
-new_delhi_wards <- read.csv("Data/uber_delhi_ward_ids.csv", stringsAsFactors = FALSE)
-inter_ward_times <- data.table::fread("Data/new_delhi-wards-2018-1-All-HourlyAggregate.csv", stringsAsFactors = F)
+suppressPackageStartupMessages(library(tidyverse))
+new_delhi_wards <- read.csv("../Data/uber_delhi_ward_ids.csv", stringsAsFactors = FALSE)
+inter_ward_times <- data.table::fread("../Data/new_delhi-wards-2018-1-All-HourlyAggregate.csv", stringsAsFactors = F)
 ```
 
 Inter ward distance was calculated through QGIS using the the wards geojson file downloaded from the UBER Movement website for DELHI. Process was:
@@ -23,7 +31,7 @@ Inter ward distance was calculated through QGIS using the the wards geojson file
 - To calculate a distance matrix from each polygon center to other for all ploygons
 
 ```{r}
-inter_ward_distance <- data.table::fread("Data/spatial/distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
+inter_ward_distance <- data.table::fread("../Data/spatial/distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
 ```
 
 Merging Distance and Time components

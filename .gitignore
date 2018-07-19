@@ -37,3 +37,6 @@ rsconnect/
 
 # Datasets - UBER Movement and other open data sources
 Data/
+.Rproj.user
+
+.DS_Store

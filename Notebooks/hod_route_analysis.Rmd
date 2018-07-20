@@ -1,10 +1,6 @@
 ---
 title: "Traffic patterns from UBER Movement Dataset"
 output:
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '2'
   html_notebook:
     fig_caption: yes
     highlight: pygments

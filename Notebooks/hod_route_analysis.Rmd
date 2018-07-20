@@ -1,28 +1,33 @@
 ---
 title: "Traffic patterns from UBER Movement Dataset"
 output:
-    html_document:
-      fig_caption: yes
-      highlight: pygments
-      toc: TRUE
-      toc_depth: 2
-      number_sections: TRUE
-      toc_float:
-        smooth_scroll: FALSE
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+  html_notebook:
+    fig_caption: yes
+    highlight: pygments
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      smooth_scroll: no
 ---
+
+# Preparing Datasets
 
 Datasets:
 
-|     Key        |        Value                                                     |
+|     Dataset        |        Aggregated travel times between every zone pair in the city                                                     |
 |-------------|-------------------------------------------------------------|
 | Time Period | Q1 2018                                                     |
-| Dataset     | Aggregated travel times between every zone pair in the city |
 | City        | Delhi                                                       |
 
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
-new_delhi_wards <- read.csv("../Data/uber_delhi_ward_ids.csv", stringsAsFactors = FALSE)
-inter_ward_times <- data.table::fread("../Data/new_delhi-wards-2018-1-All-HourlyAggregate.csv", stringsAsFactors = F)
+new_delhi_wards <- read.csv("Data/uber_delhi_ward_ids.csv", stringsAsFactors = FALSE)
+inter_ward_times <- data.table::fread("Data/new_delhi-wards-2018-1-All-HourlyAggregate.csv", stringsAsFactors = F)
 ```
 
 Inter ward distance was calculated through QGIS using the the wards geojson file downloaded from the UBER Movement website for DELHI. Process was:
@@ -31,7 +36,7 @@ Inter ward distance was calculated through QGIS using the the wards geojson file
 - To calculate a distance matrix from each polygon center to other for all ploygons
 
 ```{r}
-inter_ward_distance <- data.table::fread("../Data/spatial/distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
+inter_ward_distance <- data.table::fread("Data/spatial/distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
 ```
 
 Merging Distance and Time components
@@ -50,6 +55,8 @@ Converting distance to kilometer
 inter_ward_matrix$distance_km <- inter_ward_matrix$distance_metre/1000
 ```
 
+# Time per km ranges at every Hour of the day
+
 The objective of this analysis is to focus on the congestion of vehicular activity on
 city routes. Since the current dataset from UBER gives us just the travel times, it is importatnt to normlaise it by the distance metric, thus focusing on time taken on covering every km of a route (assumption being that every km takes the equal amount of time, certainly not the case, but this should be good for an EDA) and treating it as a proxy of business of that route. 
 
@@ -60,7 +67,7 @@ inter_ward_matrix$time_per_km <- inter_ward_matrix$mean_travel_time/inter_ward_m
 Let's now look at the density plots for time per km at every hour of the day - This will help us see the range of times and check if the flow rate of city traffic is constant at every hour or varies across routes
 
 Excluding the rides done in the same Movement zone, as the distance is not calculated for such cases. 
-```{r}
+```{r facet_hod, echo=FALSE}
 library(ggplot2)
 
 ggplot(inter_ward_matrix[!is.na(inter_ward_matrix$distance_degree),], aes(x = time_per_km)) +
@@ -74,14 +81,18 @@ Results:
 - The peaks turns a bit flat after 7 AM and the width increases, as the congestion increases, so is the variability with time.
 
 Let's look at the 90th percentile of *time taken per km* at every hour
-```{r}
+```{r quantile_distribution, include=FALSE}
 quantile_vec <- c()
 for(i in 1:24){
  quantile_vec <- c(quantile_vec,quantile(inter_ward_matrix$time_per_km[inter_ward_matrix$hod==(i-1) & !is.na(inter_ward_matrix$distance_degree)], 0.9))
 }
 quantile_df <- data.frame('hod' = 0:23, quantile_vec)
-ggplot(data = quantile_df, aes(x = hod,y = quantile_vec)) + geom_bar(stat = 'identity') +
+```
+
+```{r quantile_distribution_plot, echo=FALSE}
+quantile_plot <- ggplot(data = quantile_df, aes(x = hod,y = quantile_vec)) + geom_bar(stat = 'identity') +
   ylab("Time per km (95th percentile)") + xlab('Hour of the day')
+quantile_plot
 ```
 
 Observations:

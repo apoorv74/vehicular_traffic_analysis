@@ -220,8 +220,29 @@ So, there are a total of _111_ such routes. Let's see if we could find some patt
 
 ```{r}
 number_instances <-
-  inter_ward_matrix %>% group_by(sourceid, dstid) %>% summarise(total_hod = length(hod)
-route_deviations_df <- dplyr::left_join(route_deviations_df, number_instances, by=c('route_start'='sourceid','route_end'='dstid'))
-route_deviations_df %>% filter(route_deviation > 1800 & total_hod > 6) %>% arrange(desc(route_deviation))
+  inter_ward_matrix %>% group_by(sourceid, dstid) %>% summarise(total_hod = length(hod))
+  
+  route_deviations_df <-
+  dplyr::left_join(
+  route_deviations_df,
+  number_instances,
+  by = c('route_start' = 'sourceid', 'route_end' = 'dstid')
+  )
+  
+  route_deviations_df %>% filter(route_deviation > 1800 &
+  total_hod > 6) %>% arrange(desc(route_deviation))
 ```
 
+We now have 4 routes with atleast 6 observations. Some observations:
+
+- These routes are affected the most due to congestion as the same ride will take almost the double amount of time to complete in peak hours
+- All of them have a deviation of close to __30 mins__ 
+
+```{r}
+ggplot(data = inter_ward_matrix[inter_ward_matrix$sourceid== 119 & inter_ward_matrix$dstid == 140,], aes(hod,mean_travel_time)) +  geom_point(shape = 16, size = 5) + xlab('Hour of the day') + ylab('Mean travel time (in seconds)') + theme_minimal()
+```
+
+- These are longer routes (~25-30 Km's)
+- If you'll observe the scatter plot, these routes suffer the most between 3 PM till 9 PM
+- These routes can be termed as end to end routes, as they start and end mostly at the points which lie on the perimeter of Delhi. Most of these routes start from the Eastern part and end at the Western parts, moving through Central Delhi. 
+![route_deviations](../images/route_deviations.png)

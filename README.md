@@ -21,4 +21,4 @@ Possibilities:
 - [] Busiest patches in a city
 - [x] Time per km ranges at every Hour of the day
 - [x] Longest Journeys
-- [] Average time deviation from 0-23 for every route
+- [x] Average time deviation from 0-23 for every route

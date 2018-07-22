@@ -23,7 +23,7 @@ Datasets:
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
 new_delhi_wards <- read.csv("Data/uber_delhi_ward_ids.csv", stringsAsFactors = FALSE)
-inter_ward_times <- data.table::fread("Data/new_delhi-wards-2018-1-All-HourlyAggregate.csv", stringsAsFactors = F)
+inter_ward_times <- data.table::fread("Data/delhi_hod_times.csv", stringsAsFactors = F)
 ```
 
 Inter ward distance was calculated through QGIS using the the wards geojson file downloaded from the UBER Movement website for DELHI. Process was:
@@ -32,7 +32,7 @@ Inter ward distance was calculated through QGIS using the the wards geojson file
 - To calculate a distance matrix from each polygon center to other for all ploygons
 
 ```{r}
-inter_ward_distance <- data.table::fread("Data/spatial/distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
+inter_ward_distance <- data.table::fread("Data/spatial/delhi_distance_matrix.csv", stringsAsFactors = F, data.table = FALSE)
 ```
 
 Merging Distance and Time components
@@ -66,9 +66,9 @@ Excluding the rides done in the same Movement zone, as the distance is not calcu
 ```{r facet_hod, echo=FALSE}
 library(ggplot2)
 
-ggplot(inter_ward_matrix[!is.na(inter_ward_matrix$distance_degree),], aes(x = time_per_km)) +
+ggplot(inter_ward_matrix[!is.na(inter_ward_matrix$Distance),], aes(x = time_per_km)) +
   geom_density(alpha=.2, fill="#FF6666") +
-  facet_wrap(~ hod, nrow=6) + xlab("Time per km (seconds)")
+  facet_wrap(~ hod, nrow=6) + xlab("Time per km (seconds)") + theme_minimal(pop)
 ```
 
 Results:
@@ -80,15 +80,14 @@ Let's look at the 90th percentile of *time taken per km* at every hour
 ```{r quantile_distribution, include=FALSE}
 quantile_vec <- c()
 for(i in 1:24){
- quantile_vec <- c(quantile_vec,quantile(inter_ward_matrix$time_per_km[inter_ward_matrix$hod==(i-1) & !is.na(inter_ward_matrix$distance_degree)], 0.9))
+ quantile_vec <- c(quantile_vec,quantile(inter_ward_matrix$time_per_km[inter_ward_matrix$hod==(i-1) & !is.na(inter_ward_matrix$Distance)], 0.9))
 }
 quantile_df <- data.frame('hod' = 0:23, quantile_vec)
 ```
 
 ```{r quantile_distribution_plot, echo=FALSE}
-quantile_plot <- ggplot(data = quantile_df, aes(x = hod,y = quantile_vec)) + geom_bar(stat = 'identity') +
-  ylab("Time per km (95th percentile)") + xlab('Hour of the day')
-quantile_plot
+ggplot(data = quantile_df, aes(x = hod,y = quantile_vec)) + geom_bar(stat = 'identity') +
+  ylab("Time per km (95th percentile)") + xlab('Hour of the day') + theme_minimal()
 ```
 
 Observations:
@@ -100,7 +99,7 @@ Being rush office hours,
 
 Till now we were only working with hod(Hour of the day), now lets take the route into consideration as well
 
-Busiest routes throughout the day (Top 10): 
+# Busiest routes throughout the day (Top 10): 
 
 ```{r}
 x <- inter_ward_matrix %>% filter(!is.na(time_per_km))%>% group_by(sourceid, dstid) %>%
@@ -245,4 +244,49 @@ ggplot(data = inter_ward_matrix[inter_ward_matrix$sourceid== 119 & inter_ward_ma
 - These are longer routes (~25-30 Km's)
 - If you'll observe the scatter plot, these routes suffer the most between 3 PM till 9 PM
 - These routes can be termed as end to end routes, as they start and end mostly at the points which lie on the perimeter of Delhi. Most of these routes start from the Eastern part and end at the Western parts, moving through Central Delhi. 
+
 ![route_deviations](../images/route_deviations.png)
+
+# How far can you go in an hour
+
+A prominent indicator of congestion in any city is the variation in average speed of vehicles over time. Distance travelled in an hour of time at various times of the day should be a good proxy to determine the flow rates of different routes or cities themselves. Having analysed Delhi's traffic throughout the day and at diferent routes, lets compare it with other cities i.e Mumbai and Bangalore. For this analysis, we download the data from [UBER Movement](https://movement.uber.com/explore) for these cities for a similar time period i.e. __Q1 2018__. Our objective here is to see how far we can travel in an hour at all hours (0 to 23), the results will help us compare the congestion rates in Delhi with these cities, let's prepare the data and look at the results. 
+
+```{r}
+calculate_hourly <- function(city_name){
+  time_data <-  data.table::fread(glue::glue("Data/{city_name}_hod_times.csv"))
+  distance_data <- data.table::fread(glue::glue("Data/spatial/{city_name}_distance_matrix.csv"))
+  distance_data$distance_metre <- distance_data$Distance * 111139
+  city_matrix <- dplyr::left_join(
+    time_data,
+    distance_data,
+    by = c('sourceid' = 'InputID', 'dstid' = 'TargetID')
+  )
+  city_matrix$distance_km <- city_matrix$distance_metre/1000
+  city_matrix$time_per_km <- city_matrix$mean_travel_time/city_matrix$distance_km
+  city_matrix$km_per_hour <- 3600 / city_matrix$time_per_km  
+  hourly_distance <- city_matrix %>% group_by(hod) %>% summarise(distance_per_hour = mean(km_per_hour,na.rm = TRUE))
+  hourly_distance$city <- city_name
+  print(glue::glue(" {city_name} done ..  "))
+  return(hourly_distance)
+}
+
+city_list <- c('delhi','mumbai','bangalore')
+hourly_spider <- lapply(city_list, calculate_hourly)
+
+# Converting to a data frame for a radar chart
+hourly_spider <- dplyr::bind_rows(hourly_spider)
+ggplot(hourly_spider, aes(x = city,y = distance_per_hour)) +
+  geom_bar(alpha=.6, fill="#FF6666",stat = 'identity') +
+  ylab('Distance per hour (In Km)') + xlab('City') +
+  facet_wrap(~ hod, nrow=8) + theme_minimal()
+
+```
+
+Observations: 
+
+- __Bangalore__ looks the most congested of cities at all hours when compared with Delhi and Mumbai
+- __Delhi__ is the least congested at night and Peak AM hours i.e from 10 PM till 8 AM
+- __Mumbai__ is the least congested at peak hours i.e from 9 AM till 8 PM
+
+Yes, Bangalore traffic looks way poor than Delhi or Mumbai.
+

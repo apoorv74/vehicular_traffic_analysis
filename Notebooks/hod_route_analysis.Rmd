@@ -288,5 +288,10 @@ Observations:
 - __Delhi__ is the least congested at night and Peak AM hours i.e from 10 PM till 8 AM
 - __Mumbai__ is the least congested at peak hours i.e from 9 AM till 8 PM
 
+Out of the three cities: 
+
+- Maximum you can travel in an hour is 32.8 kms at 3 AM in Delhi
+- Minimum you can travel in an hour is 12.5 kms at 6 PM in Bangalore
+
 Yes, Bangalore traffic looks way poor than Delhi or Mumbai.
 
